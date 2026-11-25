@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101827">
+  <title>Horloge & minuteur — Veille stratégique</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1120;
+      --panel: rgba(22, 32, 51, .88);
+      --panel-border: rgba(148, 163, 184, .15);
+      --text: #f2f5fb;
+      --muted: #9aa8bd;
+      --accent: #73e0c1;
+      --accent-strong: #32c6a0;
+      --blue: #8eb8ff;
+      --danger: #ff9a9a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      padding: 32px 18px;
+      color: var(--text);
+      background:
+        radial-gradient(ellipse at 18% 12%, rgba(52, 94, 143, .25), transparent 38%),
+        radial-gradient(ellipse at 84% 88%, rgba(40, 143, 119, .16), transparent 34%),
+        var(--bg);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .shell { width: min(100%, 960px); }
+    header { margin: 0 0 28px; text-align: center; }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      color: var(--accent);
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+    .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px var(--accent); }
+    h1 { margin: 12px 0 8px; font-size: clamp(2rem, 5vw, 3.2rem); letter-spacing: -.055em; }
+    .subtitle { margin: 0; color: var(--muted); }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    .card {
+      position: relative;
+      overflow: hidden;
+      min-height: 380px;
+      padding: clamp(22px, 4vw, 36px);
+      border: 1px solid var(--panel-border);
+      border-radius: 24px;
+      background: linear-gradient(145deg, rgba(28, 41, 64, .94), var(--panel));
+      box-shadow: 0 24px 70px rgba(0, 0, 0, .22);
+    }
+    .card::after { position: absolute; content: ""; width: 200px; height: 200px; right: -100px; top: -110px; border-radius: 50%; background: rgba(115, 224, 193, .08); filter: blur(2px); }
+    .card-label { position: relative; z-index: 1; display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: .82rem; font-weight: 650; letter-spacing: .1em; text-transform: uppercase; }
+    .icon { display: grid; place-items: center; width: 38px; height: 38px; border: 1px solid var(--panel-border); border-radius: 12px; color: var(--accent); font-size: 1.1rem; }
+    .clock-face { display: grid; place-items: center; min-height: 235px; text-align: center; }
+    .clock-time { font-variant-numeric: tabular-nums; font-size: clamp(3.2rem, 8vw, 5.3rem); font-weight: 650; letter-spacing: -.065em; }
+    .clock-seconds { color: var(--accent); }
+    .clock-date { margin-top: 8px; color: var(--muted); font-size: .95rem; }
+    .timezone { margin-top: 18px; color: #74839b; font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; }
+    .timer-display { margin: 32px 0 25px; text-align: center; font-variant-numeric: tabular-nums; font-size: clamp(3rem, 7vw, 4.7rem); font-weight: 650; letter-spacing: -.06em; }
+    .timer-display.finished { color: var(--danger); animation: pulse 1s ease-in-out infinite alternate; }
+    @keyframes pulse { to { opacity: .58; } }
+    .inputs { display: flex; align-items: center; justify-content: center; gap: 9px; margin-bottom: 22px; }
+    .inputs input { width: 76px; padding: 11px 8px; color: var(--text); background: rgba(8, 14, 26, .55); border: 1px solid var(--panel-border); border-radius: 11px; outline: none; text-align: center; font: inherit; font-variant-numeric: tabular-nums; }
+    .inputs input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(115, 224, 193, .12); }
+    .inputs span { color: var(--muted); font-size: .8rem; }
+    .controls { display: flex; justify-content: center; gap: 10px; }
+    button { min-width: 104px; padding: 11px 17px; border: 1px solid var(--panel-border); border-radius: 12px; color: var(--text); background: rgba(255,255,255,.045); cursor: pointer; font: inherit; font-size: .9rem; font-weight: 650; transition: transform .15s ease, background .15s ease, opacity .15s ease; }
+    button:hover:not(:disabled) { transform: translateY(-1px); background: rgba(255,255,255,.09); }
+    button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    button:disabled { cursor: not-allowed; opacity: .42; }
+    .primary { color: #08251d; background: var(--accent); border-color: var(--accent); }
+    .primary:hover:not(:disabled) { background: var(--accent-strong); }
+    .status { min-height: 20px; margin: 13px 0 0; color: var(--muted); text-align: center; font-size: .78rem; }
+    footer { margin-top: 20px; color: #74839b; text-align: center; font-size: .78rem; }
+    @media (max-width: 680px) { .grid { grid-template-columns: 1fr; } .card { min-height: 350px; } .clock-face { min-height: 200px; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div class="eyebrow"><span class="live-dot" aria-hidden="true"></span> Votre espace de veille</div>
+      <h1>Horloge & minuteur</h1>
+      <p class="subtitle">Gardez le rythme de votre veille stratégique.</p>
+    </header>
+
+    <section class="grid" aria-label="Horloge et minuteur">
+      <article class="card" aria-labelledby="clock-heading">
+        <div class="card-label"><span id="clock-heading">Heure locale</span><span class="icon" aria-hidden="true">◷</span></div>
+        <div class="clock-face" aria-live="off">
+          <div>
+            <div class="clock-time"><span id="hours">--</span>:<span id="minutes">--</span><span class="clock-seconds">:<span id="seconds">--</span></span></div>
+            <div class="clock-date" id="date">Chargement…</div>
+            <div class="timezone" id="timezone"></div>
+          </div>
+        </div>
+      </article>
+
+      <article class="card" aria-labelledby="timer-heading">
+        <div class="card-label"><span id="timer-heading">Minuteur</span><span class="icon" aria-hidden="true">⌛</span></div>
+        <div class="timer-display" id="timer-display" role="timer" aria-label="Temps restant">05:00</div>
+        <div class="inputs" aria-label="Durée du minuteur">
+          <input id="minutes-input" type="number" min="0" max="999" value="5" inputmode="numeric" aria-label="Minutes">
+          <span>min</span>
+          <input id="seconds-input" type="number" min="0" max="59" value="0" inputmode="numeric" aria-label="Secondes">
+          <span>sec</span>
+        </div>
+        <div class="controls">
+          <button class="primary" id="start-button" type="button">Démarrer</button>
+          <button id="reset-button" type="button">Réinitialiser</button>
+        </div>
+        <p class="status" id="timer-status" aria-live="polite">Prêt à démarrer</p>
+      </article>
+    </section>
+    <footer>Une interface simple pour rester concentré sur l’essentiel.</footer>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const dateFormatter = new Intl.DateTimeFormat('fr-FR', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
+    const timezoneFormatter = new Intl.DateTimeFormat('fr-FR', { timeZoneName: 'long' });
+
+    function updateClock() {
+      const now = new Date();
+      $('hours').textContent = String(now.getHours()).padStart(2, '0');
+      $('minutes').textContent = String(now.getMinutes()).padStart(2, '0');
+      $('seconds').textContent = String(now.getSeconds()).padStart(2, '0');
+      $('date').textContent = dateFormatter.format(now);
+      $('timezone').textContent = timezoneFormatter.formatToParts(now).find(part => part.type === 'timeZoneName')?.value || '';
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    const display = $('timer-display');
+    const startButton = $('start-button');
+    const resetButton = $('reset-button');
+    const minutesInput = $('minutes-input');
+    const secondsInput = $('seconds-input');
+    const status = $('timer-status');
+    let remaining = 300;
+    let interval = null;
+
+    function formatTime(totalSeconds) {
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+    function renderTimer() {
+      display.textContent = formatTime(remaining);
+      display.classList.toggle('finished', remaining === 0);
+    }
+    function readInputs() {
+      const minutes = Math.max(0, Math.min(999, Number.parseInt(minutesInput.value, 10) || 0));
+      const seconds = Math.max(0, Math.min(59, Number.parseInt(secondsInput.value, 10) || 0));
+      minutesInput.value = minutes;
+      secondsInput.value = seconds;
+      return minutes * 60 + seconds;
+    }
+    function stopTimer() {
+      if (interval !== null) window.clearInterval(interval);
+      interval = null;
+      startButton.textContent = 'Démarrer';
+    }
+    startButton.addEventListener('click', () => {
+      if (interval !== null) {
+        stopTimer();
+        status.textContent = 'Minuteur en pause';
+        return;
+      }
+      if (remaining === 0) remaining = readInputs();
+      if (remaining <= 0) {
+        status.textContent = 'Choisissez une durée supérieure à zéro';
+        return;
+      }
+      startButton.textContent = 'Pause';
+      status.textContent = 'Minuteur en cours';
+      interval = window.setInterval(() => {
+        remaining -= 1;
+        renderTimer();
+        if (remaining <= 0) {
+          stopTimer();
+          status.textContent = 'Temps écoulé !';
+          if ('vibrate' in navigator) navigator.vibrate(200);
+        }
+      }, 1000);
+    });
+    resetButton.addEventListener('click', () => {
+      stopTimer();
+      remaining = readInputs();
+      renderTimer();
+      status.textContent = 'Minuteur réinitialisé';
+    });
+    [minutesInput, secondsInput].forEach(input => input.addEventListener('input', () => {
+      if (interval === null) {
+        remaining = readInputs();
+        renderTimer();
+        status.textContent = 'Prêt à démarrer';
+      }
+    }));
+    renderTimer();
+  </script>
+</body>
+</html>
